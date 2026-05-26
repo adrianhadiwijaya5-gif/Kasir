@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPOS System</title>
+    
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22SmartPOS%20Toko%22%2C%22short_name%22%3A%22SmartPOS%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f3f4f6%22%2C%22theme_color%22%3A%22%234f46e5%22%7D">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --radius-smooth: 20px; /* Lengkungan sangat halus */
+            --radius-button: 12px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            margin: 0; padding: 0;
+            background-color: var(--light);
+            color: var(--dark);
+            display: flex; flex-direction: column; min-height: 100vh;
+        }
+
+        /* GUI Melengkung Halus */
+        .card-rounded {
+            background: white;
+            border-radius: var(--radius-smooth);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            padding: 35px;
+        }
+
+        .login-page {
+            display: flex; justify-content: center; align-items: center; flex: 1;
+        }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .app-container { display: none; flex-direction: column; flex: 1; }
+
+        header {
+            background: white; padding: 15px 40px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+
+        .nav-buttons button {
+            background: transparent; color: #6b7280; border: none;
+            padding: 10px 18px; margin-left: 5px; cursor: pointer;
+            border-radius: var(--radius-button); font-weight: 600;
+        }
+
+        .nav-buttons button.active { background: #eef2ff; color: var(--primary); }
+
+        .main-content {
+            max-width: 900px; width: 90%; margin: 40px auto;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+        
+        input {
+            width: 100%; padding: 12px 16px; border: 1.5px solid #e5e7eb;
+            border-radius: var(--radius-button); box-sizing: border-box; outline: none;
+        }
+
+        input:focus { border-color: var(--primary); }
+
+        button.btn-main {
+            width: 100%; padding: 14px; color: white; border: none;
+            border-radius: var(--radius-button); font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+
+        .btn-primary { background-color: var(--primary); }
+        .btn-success { background-color: var(--success); }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 14px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+
+        .owner-privilege { display: none; }
+        .btn-delete { background: #fee2e2; color: var(--danger); border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="login-page" class="login-page">
+        <div class="card-rounded" style="width: 350px; text-align: center;">
+            <h2>SmartPOS</h2>
+            <p style="color: #6b7280;">Sistem Kasir Modern</p>
+            <button class="btn-main btn-primary" onclick="openPop()">Masuk Kasir</button>
+        </div>
+    </div>
+
+    <div id="modal-pop" class="modal-overlay">
+        <div class="card-rounded" style="width: 400px;">
+            <h3>Data Cabang</h3>
+            <div class="form-group">
+                <label>Nama Cabang</label>
+                <input type="text" id="in-cabang" placeholder="Cabang Jakarta">
+            </div>
+            <div class="form-group">
+                <label>Kode Pos</label>
+                <input type="number" id="in-pos" placeholder="12345">
+            </div>
+            <div class="form-group">
+                <label>Lokasi</label>
+                <input type="text" id="in-lokasi" placeholder="Lantai 1">
+            </div>
+            <button class="btn-main btn-primary" onclick="startApp()">Buka Kasir</button>
+        </div>
+    </div>
+
+    <div id="app-container" class="app-container">
+        <header>
+            <h1 style="font-size: 20px;">🏪 SmartPOS <span id="tag-cabang" style="font-size: 12px; background: #e0e7ff; color: var(--primary); padding: 4px 10px; border-radius: 10px; margin-left: 10px;"></span></h1>
+            <div class="nav-buttons">
+                <button id="nav-kasir" class="active" onclick="showP('kasir')">Kasir</button>
+                <button id="nav-log" onclick="showP('login-m')">Laporan</button>
+                <button onclick="location.reload()" style="color: var(--danger);">Keluar</button>
+            </div>
+        </header>
+
+        <div class="main-content card-rounded">
+            <div id="p-kasir" class="page active">
+                <h2>Transaksi Baru</h2>
+                <div class="form-group">
+                    <label>Total Harga (Rp)</label>
+                    <input type="number" id="t-harga" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Uang Bayar (Rp)</label>
+                    <input type="number" id="t-bayar" placeholder="0">
+                </div>
+                <button class="btn-main btn-success" onclick="hitung()">Proses</button>
+                <div id="res" style="margin-top: 20px; font-weight: bold; padding: 15px; border-radius: 12px; display: none;"></div>
+            </div>
+
+            <div id="p-login-m" class="page">
+                <h2>Akses Manajemen</h2>
+                <input type="password" id="pin" placeholder="Masukkan PIN" style="margin-bottom: 20px;">
+                <button class="btn-main btn-primary" onclick="cekPin()">Login</button>
+            </div>
+
+            <div id="p-dash" class="page">
+                <div style="display: flex; justify-content: space-between;">
+                    <h2>Riwayat Transaksi (<span id="role-name"></span>)</h2>
+                    <button class="btn-delete owner-privilege" onclick="bersihkan()">Hapus Semua</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Total</th>
+                            <th>Kembalian</th>
+                            <th class="owner-privilege">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-log"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Database & Role Passwords
+        let logs = JSON.parse(localStorage.getItem('logs')) || [];
+        let info = {};
+        const PASS = { owner: "OMPRENG3333", bendahara: "BENDAHARA6664" };
+        let currentRole = "";
+
+        // Fungsi UI
+        function openPop() { document.getElementById('modal-pop').classList.add('active'); }
+        function showP(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active'));
+            document.getElementById('p-'+id).classList.add('active');
+            if(document.getElementById('nav-'+id)) document.getElementById('nav-'+id).classList.add('active');
+        }
+
+        function startApp() {
+            info.cabang = document.getElementById('in-cabang').value;
+            if(!info.cabang) return alert("Isi data!");
+            document.getElementById('tag-cabang').innerText = info.cabang;
+            document.getElementById('modal-pop').classList.remove('active');
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+        }
+
+        function hitung() {
+            let h = parseInt(document.getElementById('t-harga').value);
+            let b = parseInt(document.getElementById('t-bayar').value);
+            let r = document.getElementById('res');
+            if(b < h) {
+                r.style.display = "block"; r.style.background = "#fee2e2"; r.innerText = "Uang Kurang!";
+            } else {
+                let k = b - h;
+                r.style.display = "block"; r.style.background = "#ecfdf5"; r.innerText = "Kembalian: Rp " + k.toLocaleString();
+                logs.push({ t: new Date().toLocaleString(), h, k, id: Date.now() });
+                localStorage.setItem('logs', JSON.stringify(logs));
+            }
+        }
+
+        function cekPin() {
+            let p = document.getElementById('pin').value;
+            if(p === PASS.owner) { currentRole = "owner"; openDash(); }
+            else if(p === PASS.bendahara) { currentRole = "bendahara"; openDash(); }
+            else { alert("PIN Salah!"); }
+        }
+
+        function openDash() {
+            showP('dash');
+            document.getElementById('role-name').innerText = currentRole;
+            document.querySelectorAll('.owner-privilege').forEach(el => {
+                el.style.display = (currentRole === "owner") ? "block" : "none";
+                if(el.tagName === "TH" || el.tagName === "TD") el.style.display = (currentRole === "owner") ? "table-cell" : "none";
+            });
+            render();
+        }
+
+        function render() {
+            let b = document.getElementById('list-log');
+            b.innerHTML = logs.length ? "" : "<tr><td colspan='4'>Kosong</td></tr>";
+            logs.slice().reverse().forEach(l => {
+                let btn = currentRole === "owner" ? `<td class="owner-privilege"><button class="btn-delete" onclick="hapusSatu(${l.id})">Hapus</button></td>` : "";
+                b.innerHTML += `<tr><td>${l.t}</td><td>Rp ${l.h.toLocaleString()}</td><td>Rp ${l.k.toLocaleString()}</td>${btn}</tr>`;
+            });
+        }
+
+        function hapusSatu(id) {
+            logs = logs.filter(l => l.id !== id);
+            localStorage.setItem('logs', JSON.stringify(logs));
+            render();
+        }
+
+        function bersihkan() {
+            if(confirm("Hapus semua?")) { logs = []; localStorage.setItem('logs', JSON.stringify(logs)); render(); }
+        }
+
+        // Service Worker Dummy for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:application/javascript,self.addEventListener("fetch",()=>{})');
+        }
+    </script>
+</body>
+</html>
